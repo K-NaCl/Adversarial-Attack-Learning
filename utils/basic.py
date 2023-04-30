@@ -7,6 +7,18 @@ from torchvision import datasets, transforms
 import numpy as np
 import os
 
+class Accumulator:
+    def __init__(self, n):
+        self.data = [0.0] * n
+
+    def add(self, *args):
+        self.data = [a + float(b) for a, b in zip(self.data, args)]
+
+    def reset(self):
+        self.data = [0.0] * len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
 
 def set_random_seed(seed: int):
     np.random.seed(seed)
@@ -14,6 +26,13 @@ def set_random_seed(seed: int):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
 
+def get_correct_num(Y: torch.Tensor, Y_hat: torch.Tensor):
+    with torch.no_grad():
+        if Y_hat.dim() > 1 and Y_hat.shape[1] > 1:
+            Y_hat = F.softmax(Y_hat, dim = 1)
+            Y_hat = Y_hat.argmax(dim = 1)
+        cmp = Y_hat.type(Y.dtype) == Y
+        return float(cmp.type(Y.dtype).sum())
 
 def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
     set_random_seed(seed)
@@ -59,6 +78,29 @@ def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
             './data/imagenette2-160/val/',
             transform=transform
         )
+        
+    elif dataset == 'fashion-mnist':
+        transform = transforms.Compose(
+            [
+                transforms.RandomCrop(28, padding=2),#数据增强
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+            ]
+        )
+        train_set = datasets.FashionMNIST(
+            root=data_pth,
+            train=True,
+            download=True,
+            transform=transform
+        )
+        test_set = datasets.FashionMNIST(
+            root=data_pth,
+            train=False,
+            download=True,
+            transform=transform
+        )
+    else:
+        raise ValueError(f'找不到数据集:{dataset}')
 
     train_iter = data.DataLoader(
         train_set,
