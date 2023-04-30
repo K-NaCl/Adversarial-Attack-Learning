@@ -31,7 +31,7 @@ class AlexNet(nn.Module):
         self.maxpool3 = nn.MaxPool2d(kernel_size = 2, padding = 1)
 
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(128*4*4, out_ch)
+        self.fc = nn.Linear(128*4, out_ch)
 
         self.register_params()
         

@@ -5,7 +5,7 @@ import timm
 import os
 import logging
 import time
-import tqdm
+from tqdm import tqdm
 
 from .basic import *
 import model as mymodel
@@ -31,7 +31,6 @@ class Trainer:
         self.seed = seed
         set_random_seed(seed)
 
-
         self.model = model_dict[model_name](in_ch, out_ch)
 
         self.dataset = dataset
@@ -46,6 +45,8 @@ class Trainer:
         
         logging.basicConfig(
             filename = self.log_path + self.model_name + '.log', 
+            format='%(asctime)s: %(message)s',
+            datefmt='%m-%d %H:%M:%S',
             level = logging.INFO
         )
 
@@ -73,9 +74,10 @@ class Trainer:
         with tqdm(enumerate(self.train_iter), total = len(self.train_iter), leave = True) as t:
             for idx, (X, Y) in t:
                 self.opt.zero_grad()
-                X, Y = X.to(self.device), Y.to(self.device)
-                Y_hat = torch.tensor(self.model(X))
-                loss = torch.tensor(self.loss_fn(Y_hat,Y))
+                X, Y = X.to(self.device), Y.to(self.device)               
+                Y_hat: torch.Tensor = self.model(X)
+                loss: torch.Tensor = self.loss_fn(Y_hat,Y)
+
                 loss.backward()
                 self.opt.step()
 
@@ -107,4 +109,34 @@ class Trainer:
         for path in paths:
             if not os.path.exists(path):
                 os.makedirs(path)
+    
+    def test_train(self):        
+        set_random_seed(self.seed)
+        logging.info(f'train on {self.device}')
+        self.model.to(self.device)
+
+        time_start = time.time() 
+        self.model.train()
+        accu = Accumulator(3)
+        with tqdm(enumerate(self.train_iter), total = len(self.train_iter), leave = True) as t:
+            for idx, (X, Y) in t:
+                self.opt.zero_grad()
+                X, Y = X.to(self.device), Y.to(self.device)
+                Y_hat: torch.Tensor = self.model(X)
+                loss: torch.Tensor = self.loss_fn(Y_hat,Y)
+                loss.backward()
+                self.opt.step()
+
+                with torch.no_grad():
+                    correct_num = get_correct_num(Y, Y_hat)
+
+                accu.add(loss.item() * len(Y), correct_num, len(Y))
+
+                t.set_description(f'Epoch: [{1}/{256}]')
+                t.set_postfix({
+                    'batch': f'{idx} / {len(self.train_iter)}',
+                    'training loss': f'{accu[0] / accu[-1]:.2e}',
+                    'training acc': f'{(accu[1] / accu[-1]) * 100:4.2f}%'
+                })
+        time_end = time.time()
 

@@ -78,7 +78,7 @@ def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
             './data/imagenette2-160/val/',
             transform=transform
         )
-        
+
     elif dataset == 'fashion-mnist':
         transform = transforms.Compose(
             [
