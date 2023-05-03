@@ -6,7 +6,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", default="alexnet")
     parser.add_argument("--dataset", default="fasion-mnist")
     parser.add_argument("--batch_size", default=256, type=int)
-    parser.add_argument("--lr", default=0.0001, type=float)
+    parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--epochs", default=25, type=int)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--cuda", default=0, type=int)

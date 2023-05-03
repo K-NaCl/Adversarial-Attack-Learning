@@ -1,12 +1,14 @@
 import torch
 from torch import nn
+from .base import BaseModel
 
-class AlexNet(nn.Module):    
+class AlexNet(BaseModel):
+    name = 'AlexNet'
     def __init__(
         self,
         in_ch: int,
         out_ch: int
-    ) -> None:                
+    ) -> None:           
         super().__init__()
 
         self.conv1 = nn.Conv2d(
@@ -31,7 +33,16 @@ class AlexNet(nn.Module):
         self.maxpool3 = nn.MaxPool2d(kernel_size = 2, padding = 1)
 
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(128*4, out_ch)
+
+        self.fc1 = nn.Linear(128*4, 2048)
+        self.relu6 = nn.ReLU()
+        self.dp1 = nn.Dropout(p=0.5)
+
+        self.fc2 = nn.Linear(2048, 2048)
+        self.relu7 = nn.ReLU()        
+        self.dp2 = nn.Dropout(p=0.5)
+
+        self.fc3 = nn.Linear(2048, out_ch)
 
         self.register_params()
         
@@ -46,5 +57,3 @@ class AlexNet(nn.Module):
             X = module(X)
         return X
     
-    def name() -> str:
-        return 'AlexNet'
