@@ -59,7 +59,8 @@ class Trainer:
                 self.opt, 'max', factor = 0.5, patience = 5
             )
 
-        self.train_iter, self.test_iter = data_iter(dataset, batch_size, seed)
+        if not model.is_load:
+            self.train_iter, self.test_iter = data_iter(dataset, batch_size, seed)
 
         self.device = torch.device(f'cuda:0' if use_cuda and torch.cuda.is_available() else 'cpu')
         
@@ -219,16 +220,16 @@ class Trainer:
                 os.makedirs(path)
 
 
-    def load_model(self):
-        '''
-        根据模型名称与参数加载训练好的模型
-        '''
-        load_path = self.model_path + self.model_name_param
-        if not os.path.exists(load_path):
-            raise ValueError(f'模型路径{load_path}不存在！')
+    # def load_model(self):
+    #     '''
+    #     根据模型名称与参数加载训练好的模型
+    #     '''
+    #     load_path = self.model_path + self.model_name_param
+    #     if not os.path.exists(load_path):
+    #         raise ValueError(f'模型路径{load_path}不存在！')
         
-        self.model.load_state_dict(torch.load(load_path, map_location = 'cpu'))
-        self.model.eval()
+    #     self.model.load_state_dict(torch.load(load_path, map_location = 'cpu'))
+    #     self.model.eval()
 
 
     def check_path(self):

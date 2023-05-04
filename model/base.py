@@ -10,5 +10,8 @@ class BaseModel(nn.Module):
     name: str 
     '模型名称'
 
+    is_load: bool = False
+    '是否为已训练模型'
+
     def set_name(self, name: str):
         self.name = name

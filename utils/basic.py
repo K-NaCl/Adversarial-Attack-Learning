@@ -10,6 +10,7 @@ import model as mymodel
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from tqdm import tqdm
 
 class Accumulator:
     def __init__(self, n: int):
@@ -86,6 +87,10 @@ def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
     - `dataset`: 数据集名称，可选["CIFAR*" "imagenette" "fashion-mnist"]中的一种
     - `batch_size`: 批量大小，影响显存占用率
     - `seed`: 随机种子，用于复现结果，影响洗牌顺序
+
+    Returns:
+    - `train_iter`: 训练集(DataLoader)
+    - `test_iter`: 测试集(DataLoader)
     '''
     set_random_seed(seed)
     data_pth = f'./data/{dataset}'
@@ -203,6 +208,7 @@ def creat_model(model_name: str, model_path: str = '', in_ch: int = 1, out_ch: i
     if model_path != '':
         if os.path.exists(model_path):            
             model.load_state_dict(torch.load(model_path, map_location = 'cpu'))
+            model.is_load = True
         else:
             raise ValueError(f'模型路径{model_path}不存在！')
 
@@ -212,27 +218,33 @@ def creat_model(model_name: str, model_path: str = '', in_ch: int = 1, out_ch: i
 
 
 
-def test_accuracy(model: nn.Module, data_iter) -> float:
+@torch.no_grad()
+def test_accuracy(model: mymodel.BaseModel, data_iter) -> float:
     '''
     在指定数据集上测试模型准确率
 
     Args:
     - `model`: 待测试模型
-    - `data_iter`: 一组数据集，可使用`data_iter()`生成
+    - `data_iter`: 一组数据，可使用`data_iter()`生成
 
     Return:
     - 模型准确率(float)
     '''
+    print(f'test on {model.name}')
+    
+    if not model.is_load:
+        raise(f'模型{model.name}未训练')
     accu = Accumulator(2)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     with torch.no_grad():
-        for X, Y in data_iter:
-            X, Y = X.to(device), Y.to(device)
-            Y_hat = model(X)
-            accu.add(get_correct_num(Y, Y_hat), len(Y))
+        with tqdm(enumerate(data_iter), total = len(data_iter), leave = True) as t:
+            for idx, (X, Y) in t:
+                X, Y = X.to(device), Y.to(device)
+                Y_hat: torch.Tensor = model(X)
+                accu.add(get_correct_num(Y, Y_hat), len(Y))
     model.cpu()
-    return accu[0] / accu[1] * 100
+    return accu[0] / accu[1]
 
 
 
