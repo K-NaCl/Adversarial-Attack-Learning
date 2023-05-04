@@ -12,33 +12,81 @@ import matplotlib.pyplot as plt
 import os
 
 class Accumulator:
-    def __init__(self, n):
+    def __init__(self, n: int):
+        '''        
+        累加器类，方便累加一些数据，如正确数、损失等
+        
+        Args:
+        - `n`: 累加器维度
+        '''
         self.data = [0.0] * n
 
+
     def add(self, *args):
+        '''
+        累加函数
+
+        Args:
+        - `*args`: 待累加数据组，与累加器维度对应
+        '''
         self.data = [a + float(b) for a, b in zip(self.data, args)]
 
+
     def reset(self):
+        '''
+        重置函数，将保存数据重置为0
+        '''
         self.data = [0.0] * len(self.data)
+
 
     def __getitem__(self, idx):
         return self.data[idx]
 
+
+
 def set_random_seed(seed: int):
+    '''
+    设置随机种子，用于复现结果
+
+    Args:
+    - `seed`: 随机种子
+    '''
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
 
+
+
 def get_correct_num(Y: torch.Tensor, Y_hat: torch.Tensor):
+    '''
+    获取批量中预测正确个数
+
+    Args:
+    - `Y`: 正确标签
+    - `Y_hat`: 预测标签
+
+    Retern:
+    - `correct_num`: 预测正确个数(float)
+    '''
     with torch.no_grad():
         if Y_hat.dim() > 1 and Y_hat.shape[1] > 1:
             Y_hat = F.softmax(Y_hat, dim = 1)
             Y_hat = Y_hat.argmax(dim = 1)
         cmp = Y_hat.type(Y.dtype) == Y
         return float(cmp.type(Y.dtype).sum())
+    
+
 
 def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
+    '''
+    获取数据集迭代器
+    
+    Args:
+    - `dataset`: 数据集名称，可选["CIFAR*" "imagenette" "fashion-mnist"]中的一种
+    - `batch_size`: 批量大小，影响显存占用率
+    - `seed`: 随机种子，用于复现结果，影响洗牌顺序
+    '''
     set_random_seed(seed)
     data_pth = f'./data/{dataset}'
     if not os.path.exists(data_pth):
@@ -123,8 +171,24 @@ def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
     )
     return train_iter, test_iter
 
-def creat_model(model_name: str, in_ch: int = 1, out_ch: int = 10, pretrained: bool = True) -> mymodel.BaseModel:
+
+
+def creat_model(model_name: str, model_path: str = '', in_ch: int = 1, out_ch: int = 10, pretrained: bool = True) -> mymodel.BaseModel:
+    '''
+    创建新模型或从路径加载模型
+
+    Args:
+    - `model_name`: 模型名称，字符串须包含["alexnet" "moilenet"]中的一种
+    - `model_path`: 模型路径，为空则创建新模型，模型类型须与名称对应
+    - `in_ch`: 输入通道数，须与数据集图片通道数对应
+    - `out_ch`: 输出通道数，须与数据集图片种类对应
+    - `pretrained`: 是否为预训练模型
+
+    Return:
+    - `model`: 输出模型(BaseModel)
+    '''
     model: mymodel.BaseModel
+    
     if not pretrained:
         if 'alexnet' in model_name.lower():
             model = mymodel.AlexNet(in_ch, out_ch)
@@ -132,10 +196,21 @@ def creat_model(model_name: str, in_ch: int = 1, out_ch: int = 10, pretrained: b
         if 'mobilenet' in model_name.lower():            
             model = timm.create_model('mobilenetv3_small_050', pretrained = True, num_classes = out_ch)
             model.conv_stem = nn.Conv2d(in_ch, 16, kernel_size = 3, stride = 1, padding = 2, bias = False)
-        else:
+        elif 'resnet' in model_name.lower():
+            model = timm.create_model('resnet18', pretrained=True, num_classes = out_ch)
             pass
+
+    if model_path != '':
+        if os.path.exists(model_path):            
+            model.load_state_dict(torch.load(model_path, map_location = 'cpu'))
+        else:
+            raise ValueError(f'模型路径{model_path}不存在！')
+
     model.name = model_name
+
     return model
+
+
 
 def test_accuracy(model: nn.Module, data_iter) -> float:
     '''
@@ -158,6 +233,8 @@ def test_accuracy(model: nn.Module, data_iter) -> float:
             accu.add(get_correct_num(Y, Y_hat), len(Y))
     model.cpu()
     return accu[0] / accu[1] * 100
+
+
 
 def imshow(img: torch.Tensor):
     '''

@@ -27,6 +27,17 @@ class Trainer:
         use_tb: bool = False,
         **kwargs,
     ) -> None:
+        '''
+        Args:
+        - `model`: 通过`creat_model()`创建的模型，可以是新模型或预训练模型
+        - `dataset`: 数据集名称，只能是`data_iter()`支持的数据集
+        - `batch_size`: 批量大小，影响显存或内存占用率
+        - `lr`: learning rate, 学习率
+        - `seed`: 随机种子，用于复现训练结果
+        - `use_cuda`: 是否使用GPU进行训练
+        - `use_lr_sche`: 是否使用学习率调整策略，根据测试精度调整学习率
+        - `use_tb`: 是否使用tensorboard可视化运行结果，从浏览器打开`http://localhost:6006/`观察结果
+        '''
         self.seed = seed
         set_random_seed(seed)
 
@@ -38,10 +49,14 @@ class Trainer:
         self.mkdir()
 
         self.loss_fn = nn.CrossEntropyLoss(reduction='mean')
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
+        # self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.opt = torch.optim.SGD(
+            self.model.parameters(), lr = lr, momentum = 0.9, 
+            nesterov = True
+        )
         if use_lr_sche:
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.opt, 'max', factor = 0.5, patience = 2
+                self.opt, 'max', factor = 0.5, patience = 5
             )
 
         self.train_iter, self.test_iter = data_iter(dataset, batch_size, seed)
@@ -50,7 +65,14 @@ class Trainer:
         
         self.use_tb = use_tb
 
+
     def train(self, epochs: int = 100):
+        '''
+        对模型进行训练
+
+        Args:
+        - `epochs`: 训练轮数
+        '''
         self.check_path()
         set_random_seed(self.seed)
 
@@ -82,7 +104,7 @@ class Trainer:
 
             train_loss, train_acc = self.train_epoch(epoch, epochs)
             test_loss, test_acc = self.test_epoch()
-
+                
             if hasattr(self, 'scheduler'):
                 self.scheduler.step(test_acc)
 
@@ -91,7 +113,8 @@ class Trainer:
             if test_acc > max_acc:
                 max_acc = test_acc
                 best_epoch = epoch
-                print(f'best epoch: {best_epoch}, max acc={max_acc * 100:4.2f}%')
+                best_info = f'best epoch: {best_epoch + 1}, max acc={max_acc * 100:4.2f}%'                
+                print(best_info)
                 torch.save(
                     self.model.state_dict(),
                     self.model_path + self.model_name_param
@@ -121,9 +144,17 @@ class Trainer:
             test_info = f'test loss: {test_loss:.2e},  test acc: {test_acc * 100:4.2f}%'
             other_info = f'time: {time_end-time_start:.2f},  best epoch: {best_epoch + 1}'
             info = f'epoch: {epoch + 1:3},  {train_info},  {test_info},  {other_info}'
-            logging.info(info)            
+            logging.info(info)
+
 
     def train_epoch(self, epoch, epochs):
+        '''
+        训练一轮模型
+
+        Args:
+        - `epoch`: 当前轮数
+        - `epochs`: 总轮数
+        '''
         self.model.train()
         accu = Accumulator(3)
         with tqdm(enumerate(self.train_iter), total = len(self.train_iter), leave = True) as t:
@@ -149,7 +180,11 @@ class Trainer:
                 })
         return accu[0] / accu[-1], accu[1] / accu[-1]
 
+
     def test_epoch(self):
+        '''
+        测试一轮模型
+        '''
         self.model.eval()
         accu = Accumulator(3)
         with torch.no_grad():
@@ -161,7 +196,17 @@ class Trainer:
                 accu.add(loss.item() * len(Y), correct_num, len(Y))
         return accu[0] / accu[-1], accu[1] / accu[-1]
 
+
     def mkdir(self):
+        '''
+        建立运行结果目录，如果目录已存在则跳过，目录结构如下
+
+        --results   用于保存运行结果\n
+          |-models  用于保存测试中准确率最高的模型\n
+          |-metrics 用于保存每轮训练与测试的准确度与损失，保存为.csv格式文件\n
+          |-logs    用于记录训练日志，便于之后查看\n
+          |-tb_out  用于保存tensorboard可视化文件
+        '''
         self.results_path = f'./results/{self.dataset}/{self.model_name_param}'
         self.model_path = f'{self.results_path}/models/'
         self.metric_path = f'{self.results_path}/metrics/'
@@ -173,7 +218,11 @@ class Trainer:
             if not os.path.exists(path):
                 os.makedirs(path)
 
-    def load_model(self):        
+
+    def load_model(self):
+        '''
+        根据模型名称与参数加载训练好的模型
+        '''
         load_path = self.model_path + self.model_name_param
         if not os.path.exists(load_path):
             raise ValueError(f'模型路径{load_path}不存在！')
@@ -181,10 +230,18 @@ class Trainer:
         self.model.load_state_dict(torch.load(load_path, map_location = 'cpu'))
         self.model.eval()
 
+
     def check_path(self):
+        '''
+        检查对应模型名称与参数目录下是否存在数据
+
+        如不存在日志文件以外的数据，则继续训练。
+
+        如存在日志文件以外的数据，则向用户询问，若确认继续训练，则覆盖原有数据。
+        '''
         exist_file = False
         for dirpath, __, filenames in os.walk(self.results_path):
-            if len(filenames) != 0:
+            if len(filenames) != 0 and 'logs' not in dirpath:
                 print(f'文件夹{dirpath.replace(self.results_path, "")}下存在文件{filenames}')
                 exist_file = True
 
