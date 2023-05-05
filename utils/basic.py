@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
+from typing import Tuple
 
 class Accumulator:
     def __init__(self, n: int):
@@ -79,7 +80,11 @@ def get_correct_num(Y: torch.Tensor, Y_hat: torch.Tensor):
     
 
 
-def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
+def data_iter(dataset: str,
+              mode: str = 'train',
+              batch_size: int = 256,
+              seed: int = 0
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
     '''
     获取数据集迭代器
     
@@ -99,17 +104,26 @@ def data_iter(dataset: str, batch_size: int = 256, seed: int = 0):
 
     if 'CIFAR' in dataset:
         dataset_name = 'datasets.' + dataset
-        transform = transforms.Compose(
-            [
-                transforms.Resize(224),
-                transforms.AutoAugment(),
-                transforms.ToTensor(),  # numpy -> Tensor
-                transforms.Normalize(
-                    mean=(0.4914, 0.4822, 0.4465),
-                    std=(0.2023, 0.1994, 0.2010)
-                )
-            ]
-        )
+        if mode == 'test':
+            transform = transforms.Compose(
+                [                    
+                    transforms.Resize(224),
+                    transforms.ToTensor()
+                ]
+            )
+        elif mode == 'train':            
+            transform = transforms.Compose(
+                [
+                    transforms.Resize(224),
+                    transforms.AutoAugment(),
+                    transforms.ToTensor(),  # numpy -> Tensor
+                    transforms.Normalize(
+                        mean=(0.4914, 0.4822, 0.4465),
+                        std=(0.2023, 0.1994, 0.2010)
+                    )
+                ]
+            )
+
         train_set = eval(dataset_name)(
             root=data_pth,
             train=True,
@@ -256,6 +270,53 @@ def imshow(img: torch.Tensor):
     - `img`: 待显示图片
     '''
     # img = img / 2 + 0.5 # reverse normalization
-    np_img = img.numpy()  # tensor --> numpy
+    if img.dim() == 4:
+        np_img = img[0].numpy()
+    else:
+        np_img = img.numpy()  # tensor --> numpy
     plt.imshow(np.transpose(np_img, (1, 2, 0)))
     plt.show()
+
+
+@torch.no_grad()
+def predict(
+    model: mymodel.BaseModel,
+    imgs_in: torch.Tensor,
+    normalize_mode: str = None,
+    get_Y_hat: bool = True,
+    use_cuda: bool = True
+):
+    print(f'predict {normalize_mode} on {model.name}')
+
+    if normalize_mode is not None:
+        mean = {
+            'cifar10': (0.4914, 0.4822, 0.4465),
+            'cifar100': (0.5071, 0.4867, 0.4408),
+            'imagenette': (0.485, 0.456, 0.406),
+        }
+        std = {
+            'cifar10': (0.2023, 0.1994, 0.2010),
+            'cifar100': (0.2675, 0.2565, 0.2761),
+            'imagenette': (0.229, 0.224, 0.225),
+        }
+        transform = transforms.Normalize(
+            mean[normalize_mode.lower()], std[normalize_mode.lower()]
+        )
+        imgs = transform(imgs_in.clone())
+    else:
+        imgs = imgs_in.clone()
+
+    device = torch.device(f'cuda' if use_cuda and torch.cuda.is_available() else 'cpu')
+
+    model.to(device)
+
+    Y_hat = model(imgs.to(device))
+
+    probs = F.softmax(Y_hat, dim=1)
+
+    values, indices = probs.max(dim=1)
+
+    if get_Y_hat:
+        return indices.cpu(), values.cpu(), Y_hat.cpu()
+    else:
+        return indices.cpu(), values.cpu()

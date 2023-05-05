@@ -34,12 +34,12 @@ class AlexNet(BaseModel):
 
         self.flatten = nn.Flatten()
 
-        self.fc1 = nn.Linear(128*4, 2048)
+        self.fc1 = nn.Linear(128*(4**in_ch), 2048)
         self.relu6 = nn.ReLU()
         self.dp1 = nn.Dropout(p=0.5)
 
         self.fc2 = nn.Linear(2048, 2048)
-        self.relu7 = nn.ReLU()        
+        self.relu7 = nn.ReLU()
         self.dp2 = nn.Dropout(p=0.5)
 
         self.fc3 = nn.Linear(2048, out_ch)

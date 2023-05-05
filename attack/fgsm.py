@@ -17,11 +17,11 @@ class FGSM(BaseAttack):
             eps: float = 0.1
     ) -> torch.Tensor:
         super().__call__(imgs_in, labels)
+        
         self.model.zero_grad()
         loss_fn = nn.CrossEntropyLoss()
         imgs = imgs_in.clone().detach().to(self.device)
-        if imgs.dim() == 3:
-            imgs.unsqueeze_(0)
+
         imgs.requires_grad_(True)
 
         Y = labels.clone().to(self.device)
@@ -30,12 +30,11 @@ class FGSM(BaseAttack):
         loss.backward()
         
         grads = imgs.grad.cpu()
-        print(f'size:{grads.shape}')
 
         imgs_out = torch.zeros_like(imgs)
         with tqdm(enumerate(grads), total = len(grads), leave = True) as t:
             for idx, grad in t:
                 delta = eps * grad.sign().cpu()
-                imgs_out[idx] = torch.clamp(imgs[idx].data.cpu() + delta, 0, 1)
+                imgs_out[idx] = torch.clamp(imgs.data[idx].cpu() + delta, 0, 1)
                 t.set_description(f'正在攻击图片{idx + 1}')
         return imgs_out.cpu().detach()

@@ -60,7 +60,7 @@ class Trainer:
             )
 
         if not model.is_load:
-            self.train_iter, self.test_iter = data_iter(dataset, batch_size, seed)
+            self.train_iter, self.test_iter = data_iter(dataset, 'train', batch_size, seed)
 
         self.device = torch.device(f'cuda:0' if use_cuda and torch.cuda.is_available() else 'cpu')
         
