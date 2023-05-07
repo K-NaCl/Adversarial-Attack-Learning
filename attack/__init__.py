@@ -1,1 +1,4 @@
-from .fgsm import *
+from .FGSM import *
+from .IFGSM import *
+from .PGD import *
+from .NIFGSM import *

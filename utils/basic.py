@@ -10,8 +10,23 @@ import model as mymodel
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import shutil
 from tqdm import tqdm
-from typing import Tuple
+
+class_names = {
+    'Imagenette': (
+        'Tench', 'English Springer', 'Cassette Player', 'Chain Saw', 'Church', 
+        'French Horn', 'Garbage Truck', 'Gas Pump', 'Golf Ball', 'Parachute'
+    ),
+    'CIFAR10': (
+        'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 'Dog', 'Frog', 'Horse',
+        'Ship', 'Trunk'
+    ),
+    'FashionMNIST': (
+        'T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt',
+        'Sneaker', 'Bag', 'Ankle boot'
+    )
+}
 
 class Accumulator:
     def __init__(self, n: int):
@@ -84,7 +99,7 @@ def data_iter(dataset: str,
               mode: str = 'train',
               batch_size: int = 256,
               seed: int = 0
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ):
     '''
     获取数据集迭代器
     
@@ -235,30 +250,38 @@ def creat_model(model_name: str, model_path: str = '', in_ch: int = 1, out_ch: i
 @torch.no_grad()
 def test_accuracy(model: mymodel.BaseModel, data_iter) -> float:
     '''
-    在指定数据集上测试模型准确率
+    在指定数据集上测试模型准确率和平均损失
 
     Args:
     - `model`: 待测试模型
     - `data_iter`: 一组数据，可使用`data_iter()`生成
 
     Return:
-    - 模型准确率(float)
+    - 平均损失(float)
+    - 平均准确率(float)
     '''
     print(f'test on {model.name}')
     
     if not model.is_load:
         raise(f'模型{model.name}未训练')
-    accu = Accumulator(2)
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
+    
+    accu = Accumulator(3)
+    loss_fn = nn.CrossEntropyLoss(reduction='mean')
+    
     with torch.no_grad():
         with tqdm(enumerate(data_iter), total = len(data_iter), leave = True) as t:
             for idx, (X, Y) in t:
                 X, Y = X.to(device), Y.to(device)
                 Y_hat: torch.Tensor = model(X)
-                accu.add(get_correct_num(Y, Y_hat), len(Y))
+                loss: torch.Tensor = loss_fn(Y_hat, Y)
+                correct_num = get_correct_num(Y, Y_hat)
+                accu.add(loss.item() * len(Y), correct_num, len(Y))
+                
     model.cpu()
-    return accu[0] / accu[1]
+    return accu[0] / accu[-1], accu[1] / accu[-1]
 
 
 
@@ -282,11 +305,11 @@ def imshow(img: torch.Tensor):
 def predict(
     model: mymodel.BaseModel,
     imgs_in: torch.Tensor,
-    normalize_mode: str = None,
+    normalize_mode: str,
     get_Y_hat: bool = True,
     use_cuda: bool = True
 ):
-    print(f'predict {normalize_mode} on {model.name}')
+    # print(f'predict {normalize_mode} on {model.name}')
 
     if normalize_mode is not None:
         mean = {
@@ -320,3 +343,33 @@ def predict(
         return indices.cpu(), values.cpu(), Y_hat.cpu()
     else:
         return indices.cpu(), values.cpu()
+    
+def check_path(path: str):
+    '''
+    检查对应目录下是否存在数据
+
+    如不存在日志文件以外的数据，则继续运行
+
+    如存在日志文件以外的数据，则向用户询问，若确认继续训练，则覆盖原有数据。
+
+    Args:
+    - `path`: 文件夹路径
+    '''
+    if not os.path.isdir(path):
+        print(f'不存在文件夹{path}')
+        return
+    
+    exist_file = False
+    for dirpath, __, filenames in os.walk(path):
+        if len(filenames) != 0 and 'log' not in dirpath:
+            print(f'文件夹{dirpath.replace(path, "")}下存在文件{filenames}')
+            exist_file = True
+
+    if exist_file:
+        print(f'文件夹{path}下已存在数据，继续运行将覆盖原有数据，是否继续运行？y/[n]')
+        confirm = input().lower().strip()
+        if (confirm not in 'yes') or (len(confirm) == 0):
+            exit()
+        else:
+            if os.path.exists(path + '/tb_out/'):
+                shutil.rmtree(path + '/tb_out/')

@@ -18,7 +18,7 @@ class BaseAttack:
         else:
             self.device = torch.device('cpu')
         self.model.to(self.device)
-        print(f'attack {model.name} on {self.device}')
+        print(f'Using {self.__class__.__name__} attack {model.name} on {self.device}.')
 
     def __call__(
             self,

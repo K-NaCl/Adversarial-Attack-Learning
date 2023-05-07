@@ -29,12 +29,18 @@ class FGSM(BaseAttack):
         loss: torch.Tensor = loss_fn(Y_hat, Y)
         loss.backward()
         
-        grads = imgs.grad.cpu()
+        grads = imgs.grad
 
         imgs_out = torch.zeros_like(imgs)
-        with tqdm(enumerate(grads), total = len(grads), leave = True) as t:
-            for idx, grad in t:
-                delta = eps * grad.sign().cpu()
-                imgs_out[idx] = torch.clamp(imgs.data[idx].cpu() + delta, 0, 1)
-                t.set_description(f'正在攻击图片{idx + 1}')
+
+        # with tqdm(enumerate(grads), total = len(grads), leave = True) as t:
+        # for idx, grad in enumerate(grads):
+        #     delta = eps * grad.sign().cpu()
+        #     imgs_out[idx] = torch.clamp(imgs.data[idx].cpu() + delta, 0, 1)
+        #   # t.set_description(f'正在攻击图片{idx + 1}')
+            
+        with torch.no_grad():
+            deltas = eps * grads.sign()
+            imgs_out = torch.clamp(imgs.data + deltas, 0, 1)
+
         return imgs_out.cpu().detach()
