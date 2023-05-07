@@ -21,9 +21,10 @@ class PGD(BaseAttack):
         
         loss_fn = nn.CrossEntropyLoss()
         imgs = imgs_in.clone().detach().to(self.device)
-        imgs_ori = imgs_in.clone().detach().cpu()
+        imgs_ori = imgs_in.clone().detach().to(self.device)
 
-        imgs_out = torch.zeros_like(imgs)
+        imgs_out = torch.zeros_like(imgs).to(self.device)
+        deltas = torch.zeros_like(imgs)
 
         for n in range(max_iter):
             if n != 0:
