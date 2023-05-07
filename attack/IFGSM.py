@@ -38,7 +38,7 @@ class IFGSM(BaseAttack):
             grads = imgs.grad
             
             with torch.no_grad():
-                deltas = eps / (n + 1) * grads.sign()
+                deltas = eps / max_iter * grads.sign()
                 imgs_out = torch.clamp(imgs.data + deltas, 0, 1)
 
         return imgs_out.cpu().detach()

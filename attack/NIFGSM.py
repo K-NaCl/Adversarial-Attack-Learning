@@ -43,7 +43,7 @@ class NIFGSM(BaseAttack):
             for idx, grad in enumerate(grads):
                 g[idx] = mu * g[idx] + grad / torch.linalg.norm(grad)
 
-            delta = eps / (n + 1) * g.sign()
+            delta = eps / max_iter * g.sign()
             imgs_out = torch.clamp(imgs + delta, 0, 1)
         
         return imgs_out.cpu().detach()

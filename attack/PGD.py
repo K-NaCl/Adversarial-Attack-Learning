@@ -39,7 +39,7 @@ class PGD(BaseAttack):
             grads = imgs.grad
 
             with torch.no_grad():
-                deltas = deltas + eps / (n + 1) * grads.sign()
+                deltas = deltas + eps / max_iter * grads.sign()
                 imgs_out = torch.clamp(imgs_ori.data + deltas, 0, 1)
 
         return imgs_out.cpu().detach()

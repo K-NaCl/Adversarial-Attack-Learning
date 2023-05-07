@@ -223,17 +223,16 @@ def creat_model(model_name: str, model_path: str = '', in_ch: int = 1, out_ch: i
     '''
     model: mymodel.BaseModel
     
-    if not pretrained:
-        if 'alexnet' in model_name.lower():
-            model = mymodel.AlexNet(in_ch, out_ch)
+    if 'alexnet' in model_name.lower():
+        model = mymodel.AlexNet(in_ch, out_ch)
+    elif 'mobilenet' in model_name.lower():            
+        model = timm.create_model('mobilenetv3_small_050', pretrained = pretrained, num_classes = out_ch)
+        model.conv_stem = nn.Conv2d(in_ch, 16, kernel_size = 3, stride = 1, padding = 2, bias = False)
+    elif 'resnet' in model_name.lower():
+        model = timm.create_model('resnet18', pretrained = pretrained, num_classes = out_ch)
     else:
-        if 'mobilenet' in model_name.lower():            
-            model = timm.create_model('mobilenetv3_small_050', pretrained = True, num_classes = out_ch)
-            model.conv_stem = nn.Conv2d(in_ch, 16, kernel_size = 3, stride = 1, padding = 2, bias = False)
-        elif 'resnet' in model_name.lower():
-            model = timm.create_model('resnet18', pretrained=True, num_classes = out_ch)
-            pass
-
+        raise ValueError(f'没有这种模型')
+    
     if model_path != '':
         if os.path.exists(model_path):            
             model.load_state_dict(torch.load(model_path, map_location = 'cpu'))
