@@ -35,14 +35,6 @@ class DeepFool(BaseAttack):
         num_classes: int = 10,
         max_iter: int = 100,
     ) -> torch.Tensor:
-        """
-        对抗攻击算法 DeepFool 的实现
-        :param image: 原始图像
-        :param net: 用于分类的神经网络
-        :param max_iter: 最大迭代次数
-        :param overshoot: 用于微调原始输入以生成对抗样本的超调系数
-        :return: 对抗样本
-        """
         # 将图像张量转为可求导的状态，并将其复制为一个新的 tensor，用于存储扰动向量
         img_tensor = image.clone().detach().to(self.device)
         img_tensor.unsqueeze_(0)

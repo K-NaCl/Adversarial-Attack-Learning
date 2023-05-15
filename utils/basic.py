@@ -8,9 +8,14 @@ import timm
 import model as mymodel
 
 import numpy as np
+
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.rc("font", family='Microsoft YaHei')
+
 import os
 import shutil
+
 from tqdm import tqdm
 
 class_names = {
@@ -19,12 +24,12 @@ class_names = {
         'French Horn', 'Garbage Truck', 'Gas Pump', 'Golf Ball', 'Parachute'
     ),
     'CIFAR10': (
-        'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 'Dog', 'Frog', 'Horse',
-        'Ship', 'Trunk'
+        'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 
+        'Dog', 'Frog', 'Horse', 'Ship', 'Trunk'
     ),
     'FashionMNIST': (
-        'T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt',
-        'Sneaker', 'Bag', 'Ankle boot'
+        'T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat',
+        'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot'
     )
 }
 
@@ -284,7 +289,7 @@ def test_accuracy(model: mymodel.BaseModel, data_iter) -> float:
 
 
 
-def imshow(img: torch.Tensor):
+def imshow(img: torch.Tensor, title: str = '', xlabel: str = '', ylabel: str = ''):
     '''
     显示图片
 
@@ -296,8 +301,15 @@ def imshow(img: torch.Tensor):
         np_img = img[0].numpy()
     else:
         np_img = img.numpy()  # tensor --> numpy
+    
+    plt.xticks([], [])
+    plt.yticks([], [])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.xlabel(ylabel)
     plt.imshow(np.transpose(np_img, (1, 2, 0)))
     plt.show()
+
 
 
 @torch.no_grad()
@@ -335,7 +347,6 @@ def predict(
     Y_hat = model(imgs.to(device))
 
     probs = F.softmax(Y_hat, dim=1)
-
     values, indices = probs.max(dim=1)
 
     if get_Y_hat:
@@ -343,6 +354,8 @@ def predict(
     else:
         return indices.cpu(), values.cpu()
     
+
+
 def check_path(path: str):
     '''
     检查对应目录下是否存在数据
@@ -372,3 +385,4 @@ def check_path(path: str):
         else:
             if os.path.exists(path + '/tb_out/'):
                 shutil.rmtree(path + '/tb_out/')
+                print(f'已删除"{path}/tb_out/"下的数据')

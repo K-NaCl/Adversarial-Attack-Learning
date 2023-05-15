@@ -25,12 +25,11 @@ class BaseAttack:
             imgs_in: torch.Tensor, 
             labels: torch.Tensor
     ) -> torch.Tensor:
-        with torch.no_grad():            
-            if imgs_in.dim() == 3:
-                imgs_in.unsqueeze_(0)
+        if imgs_in.dim() == 3:
+            imgs_in.unsqueeze_(0)
+        
+        if labels.dim() == 0:
+            labels.unsqueeze_(0)
             
-            if labels.dim() == 0:
-                labels.unsqueeze_(0)
-                
-            if len(imgs_in) != len(labels):
-                raise ValueError(f'输入图像数量({len(imgs_in)})与标签数量({len(labels)})不一致！')
+        if len(imgs_in) != len(labels):
+            raise ValueError(f'输入图像数量({len(imgs_in)})与标签数量({len(labels)})不一致！')

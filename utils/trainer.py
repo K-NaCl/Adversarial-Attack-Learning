@@ -14,13 +14,13 @@ from .basic import *
 import model as mymodel
     
 
-class Trainer:    
+class Trainer:
     def __init__(
         self,
         model: mymodel.BaseModel,
         dataset: str = 'fashion-mnist',
         batch_size: int = 256,
-        lr: float = 0.1,
+        lr: float = 0.01,
         seed: int = 0,
         use_cuda: bool = True,
         use_lr_sche: bool = True,
@@ -36,7 +36,7 @@ class Trainer:
         - `seed`: 随机种子，用于复现训练结果
         - `use_cuda`: 是否使用GPU进行训练
         - `use_lr_sche`: 是否使用学习率调整策略，根据测试精度调整学习率
-        - `use_tb`: 是否使用tensorboard可视化运行结果，从浏览器打开`http://localhost:6006/`观察结果
+        - `use_tb`: 是否使用tensorboard可视化运行结果，从浏览器打开`http://localhost:port/`观察结果
         '''
         self.seed = seed
         set_random_seed(seed)
@@ -220,16 +220,16 @@ class Trainer:
                 os.makedirs(path)
 
 
-    # def load_model(self):
-    #     '''
-    #     根据模型名称与参数加载训练好的模型
-    #     '''
-    #     load_path = self.model_path + self.model_name_param
-    #     if not os.path.exists(load_path):
-    #         raise ValueError(f'模型路径{load_path}不存在！')
+    def load_model(self):
+        '''
+        根据模型名称与参数加载训练好的模型
+        '''
+        load_path = self.model_path + self.model_name_param
+        if not os.path.exists(load_path):
+            raise ValueError(f'模型路径{load_path}不存在！')
         
-    #     self.model.load_state_dict(torch.load(load_path, map_location = 'cpu'))
-    #     self.model.eval()
+        self.model.load_state_dict(torch.load(load_path, map_location = 'cpu'))
+        self.model.eval()
 
 
     def check_path(self):

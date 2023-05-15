@@ -11,9 +11,7 @@ class AlexNet(BaseModel):
     ) -> None:           
         super().__init__()
 
-        self.conv1 = nn.Conv2d(
-            in_ch, 32, kernel_size=11, stride=4, padding=1
-        )
+        self.conv1 = nn.Conv2d(in_ch, 32, kernel_size=11, stride=4, padding=1)
         self.relu1 = nn.ReLU()
         self.maxpool1 = nn.MaxPool2d(kernel_size = 2, padding = 1)
         
@@ -29,7 +27,6 @@ class AlexNet(BaseModel):
 
         self.conv5 = nn.Conv2d(128, 128, kernel_size = 3, padding = 1)
         self.relu5 = nn.ReLU()
-
         self.maxpool3 = nn.MaxPool2d(kernel_size = 2, padding = 1)
 
         self.flatten = nn.Flatten()

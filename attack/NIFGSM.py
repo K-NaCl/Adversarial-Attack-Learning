@@ -15,7 +15,7 @@ class NIFGSM(BaseAttack):
         imgs_in: torch.Tensor, 
         labels: torch.Tensor,
         eps: float = 0.1,
-        mu: float = 0.1,
+        mu: float = 0.9,
         max_iter: int = 5
     ) -> torch.Tensor:
         super().__call__(imgs_in, labels)
@@ -30,7 +30,7 @@ class NIFGSM(BaseAttack):
             if n != 0:
                 imgs = imgs_out.clone().detach()
             
-            imgs_nes = imgs + eps / (n + 1) * mu * g
+            imgs_nes = imgs + eps / max_iter * mu * g
             imgs_nes.requires_grad_(True)
             
             self.model.zero_grad()
