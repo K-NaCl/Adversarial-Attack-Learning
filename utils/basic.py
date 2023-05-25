@@ -27,7 +27,7 @@ class_names = {
         'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 
         'Dog', 'Frog', 'Horse', 'Ship', 'Trunk'
     ),
-    'FashionMNIST': (
+    'Fashion-MNIST': (
         'T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat',
         'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot'
     )
@@ -165,7 +165,7 @@ def data_iter(dataset: str,
                 transforms.AutoAugment(),
                 transforms.ToTensor(),  # numpy -> Tensor
             ]
-        )        
+        )
         train_set = datasets.ImageFolder(
             './data/imagenette2-160/train/',
             transform=transform
@@ -176,13 +176,21 @@ def data_iter(dataset: str,
         )
 
     elif dataset == 'fashion-mnist':
-        transform = transforms.Compose(
-            [
-                transforms.RandomCrop(28, padding=2),#数据增强
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-            ]
-        )
+        if mode == 'test':
+            transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                ]
+            )
+        elif mode == 'train':
+            transform = transforms.Compose(
+                [
+                    transforms.RandomCrop(28, padding=2),#数据增强
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                ]
+            )
+
         train_set = datasets.FashionMNIST(
             root=data_pth,
             train=True,
@@ -194,6 +202,24 @@ def data_iter(dataset: str,
             train=False,
             download=True,
             transform=transform
+        )
+    elif dataset == 'GTSRB':
+        transform = transforms.Compose(            
+            [
+                transforms.ToTensor()
+            ]
+        )
+        train_set = datasets.GTSRB(
+            root=data_pth,
+            split='train',
+            transform=transform,
+            download=True
+        )
+        test_set = datasets.GTSRB(
+            root=data_pth,
+            split='test',
+            transform=transform,
+            download=True
         )
     else:
         raise ValueError(f'找不到数据集:{dataset}')
@@ -289,7 +315,7 @@ def test_accuracy(model: mymodel.BaseModel, data_iter) -> float:
 
 
 
-def imshow(img: torch.Tensor, title: str = '', xlabel: str = '', ylabel: str = ''):
+def imshow(img: torch.Tensor, title: str = '', xlabel: str = '', ylabel: str = '', font_size: int = 20):
     '''
     显示图片
 
@@ -304,7 +330,7 @@ def imshow(img: torch.Tensor, title: str = '', xlabel: str = '', ylabel: str = '
     
     plt.xticks([], [])
     plt.yticks([], [])
-    plt.title(title)
+    plt.title(title, fontsize=font_size)
     plt.xlabel(xlabel)
     plt.xlabel(ylabel)
     plt.imshow(np.transpose(np_img, (1, 2, 0)))

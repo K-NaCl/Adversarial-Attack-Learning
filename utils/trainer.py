@@ -254,4 +254,84 @@ class Trainer:
             else:
                 if os.path.exists(self.tb_path):
                     shutil.rmtree(self.tb_path)
+    
+    def backdoor_train(self, epochs: int = 100):
+        '''
+        对模型进行含有后门的训练
+
+        Args:
+        - `epochs`: 训练轮数
+        '''
+        self.check_path()
+        set_random_seed(self.seed)
+
+        if self.use_tb:
+            self.tb_writer = SummaryWriter(self.tb_path)            
+
+        logging.basicConfig(
+            filename = self.log_path + self.model_name_param + '.log', 
+            format='%(asctime)s: %(message)s',
+            datefmt='%m-%d %H:%M:%S',
+            level = logging.INFO
+        )
+
+        metrics = {
+            'train_loss': [],
+            'test_loss': [],
+            'train_acc': [],
+            'test_acc': []
+        }        
+        
+        max_acc, best_epoch = 0.0, 0
+
+        print(f'train on {self.device}')
+        logging.info(f'train on {self.device}')
+        self.model.to(self.device)
+
+        for epoch in range(epochs):
+            time_start = time.time()
+
+            train_loss, train_acc = self.train_epoch(epoch, epochs)
+            test_loss, test_acc = self.test_epoch()
+                
+            if hasattr(self, 'scheduler'):
+                self.scheduler.step(test_acc)
+
+            time_end = time.time()
+
+            if test_acc > max_acc:
+                max_acc = test_acc
+                best_epoch = epoch
+                best_info = f'best epoch: {best_epoch + 1}, max acc={max_acc * 100:4.2f}%'                
+                print(best_info)
+                torch.save(
+                    self.model.state_dict(),
+                    self.model_path + self.model_name_param
+                )
+
+            for metric in list(metrics.keys()):
+                metrics[metric].append(eval(metric))
+
+            if self.use_tb:
+                self.tb_writer.add_scalars(
+                    'epoch',
+                    {
+                        'train_loss': train_loss,
+                        'test_loss': test_loss,
+                        'train_acc': train_acc,
+                        'test_acc': test_acc
+                    },
+                    epoch
+                )
+
+            if (epoch + 1) % 10 == 0:
+                pd.DataFrame(metrics).to_csv(
+                    self.metric_path + self.model_name_param + '.csv'
+                )
+
+            train_info = f'train loss: {train_loss:.2e},  train acc: {train_acc * 100:4.2f}%'
+            test_info = f'test loss: {test_loss:.2e},  test acc: {test_acc * 100:4.2f}%'
+            other_info = f'time: {time_end-time_start:.2f},  best epoch: {best_epoch + 1}'
+            info = f'epoch: {epoch + 1:3},  {train_info},  {test_info},  {other_info}'
+            logging.info(info)
 
